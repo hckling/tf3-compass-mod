@@ -16,6 +16,16 @@ function data()
 		gravity = { -1, -1 },
 	})
 
+	-- Rounded strip background: the same nine-patch the game uses for its callouts.
+	-- It is tinted with backgroundColor1, which the script sets.
+	a("!dk-compass-strip", {
+		backgroundImage1 = {
+			fileName = "::/gui/builtin/button/default_surface.tga",
+			horizontal = { 0, 9, 21, 30 },
+			vertical = { 0, 9, 21, 30 },
+		},
+	})
+
 	-- Game bar version: spaced like the base game's Earnings / Transported entries.
 	a("R::DkCompassGameBarPlugin", {
 		gravity = { 0.5, 0.5 },

@@ -14,14 +14,12 @@ local config = {
 	fontSize = 16,        -- size of the direction letters
 	highlightFontSize = 24, -- size of the highlighted letter
 	margin = 10,          -- distance from the screen edge in pixels
-	borderWidth = 1,      -- strip border in pixels
 	markerWidth = 3,      -- center marker (tick at the top of the strip) in pixels
 	markerHeight = 4,
 	visibleSpanDeg = 120, -- how many degrees of the horizon the strip shows
 	edgeInset = 0.06,     -- keeps letters this fraction of the strip away from its ends
 	northOffsetDeg = 0,   -- adjust if the game's "north" turns out not to be world +y
-	backgroundColor = { 0.07, 0.09, 0.12, 0.85 },
-	borderColor = { 1.0, 1.0, 1.0, 0.25 },
+	backgroundColor = { 40 / 255, 47 / 255, 54 / 255, 1.0 }, -- same as the game's HUD buttons
 	textColor = { 0.85, 0.85, 0.85, 1.0 },
 	highlightColor = { 1.0, 0.85, 0.2, 1.0 },
 	debug = false,        -- log output to stdout.txt
@@ -29,15 +27,21 @@ local config = {
 
 -- Options of the "position" mod param, in the same order as in mod.json.
 -- h: 0 = left, 0.5 = center, 1 = right; v: 0 = top, 0.5 = middle, 1 = bottom
+-- dx, dy: extra offset in pixels to keep clear of the game's own HUD elements.
+--         Positive moves right/down, negative moves left/up.
+-- The layers button in the top left corner (measured in game UI pixels from the screen edge).
+local LAYERS_BUTTON_TOP = 12
+local LAYERS_BUTTON_CENTER_Y = 32
+
 local POSITIONS : {{number}} = {
-	{ 0.0, 0.0 }, -- Top left
-	{ 0.5, 0.0 }, -- Top center
-	{ 1.0, 0.0 }, -- Top right
-	{ 0.0, 0.5 }, -- Middle left
-	{ 1.0, 0.5 }, -- Middle right
-	{ 0.0, 1.0 }, -- Bottom left
-	{ 0.5, 1.0 }, -- Bottom center
-	{ 1.0, 1.0 }, -- Bottom right
+	{ 0.0, 0.0, 56, 0 }, -- Top left (right of the layers button, vertically aligned with it)
+	{ 0.5, 0.0, 0, 0 },  -- Top center
+	{ 1.0, 0.0, 0, 0 },  -- Top right
+	{ 0.0, 0.5, 0, 0 },  -- Middle left
+	{ 1.0, 0.5, 0, 0 },  -- Middle right
+	{ 0.0, 1.0, 0, 0 },  -- Bottom left
+	{ 0.5, 1.0, 0, 0 },  -- Bottom center
+	{ 1.0, 1.0, 0, 0 },  -- Bottom right
 }
 local POSITION_GAME_BAR = #POSITIONS -- the last option, "Game bar", comes right after the screen positions
 local DEFAULT_POSITION = 2
@@ -55,6 +59,9 @@ local record Settings
 	inGameBar : boolean
 	posH : number
 	posV : number
+	offsetX : number
+	offsetY : number
+	alignWithLayersButton : boolean
 	scale : number
 	gameBarText : integer
 end
@@ -87,11 +94,14 @@ local function loadSettings() : Settings
 	print("[dk_compass] settings (0-based): position = " .. tostring(positionIndex) .. ", size = " .. tostring(sizeIndex)
 		.. ", gameBarText = " .. tostring(gameBarText)
 		.. (ok and "" or " (could not read mod params, using defaults)"))
-	local pos = POSITIONS[positionIndex + 1] or { 0.0, 0.0 }
+	local pos = POSITIONS[positionIndex + 1] or { 0.0, 0.0, 0, 0 }
 	return {
 		inGameBar = positionIndex == POSITION_GAME_BAR,
 		posH = pos[1],
 		posV = pos[2],
+		offsetX = pos[3],
+		offsetY = pos[4],
+		alignWithLayersButton = positionIndex == 0,
 		scale = SCALES[sizeIndex + 1],
 		gameBarText = gameBarText,
 	}
@@ -194,12 +204,11 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 	local function px(value : number) : integer
 		return math.max(1, math.floor(value * scale + 0.5))
 	end
-	local border = px(config.borderWidth)
+	-- the rounded shape comes from the "dk-compass-strip" rule in compass.css.lua,
+	-- which sets a nine-patch image that gets tinted with backgroundColor1
 	local stripStyle = styleutil.makeStyle{
 		size = { px(config.width), px(config.height) },
-		backgroundColor = config.backgroundColor,
-		borderColor = config.borderColor,
-		borderWidth = { border, border, border, border },
+		backgroundColor1 = config.backgroundColor,
 	}
 	local marginStyle = api.gui.StyleSheet.new()
 	marginStyle.padding = api.type.Vec4f.new(config.margin, config.margin, config.margin, config.margin)
@@ -245,6 +254,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 		h = 0.5,
 		v = 0.0,
 		item = builtin.Component{
+			mouseTransparent = true,
 			meta = {
 				styleSheet = styleutil.makeStyle{
 					size = { px(config.markerWidth), px(config.markerHeight) },
@@ -254,14 +264,49 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 		},
 	}
 
+	-- empty fixed-size component used to push the strip away from HUD elements
+	local function spacer(w : number, hgt : number) : TreeNodeId
+		return builtin.Component{
+			mouseTransparent = true,
+			meta = { styleSheet = styleutil.makeStyle{ size = { w, hgt } } },
+		}
+	end
+
+	local strip = builtin.Component{
+		mouseTransparent = true,
+		meta = { class = "dk-compass-strip", styleSheet = stripStyle },
+		layout = builtin.FloatingLayout{ children = children },
+	}
+
+	-- horizontal offset: spacer on the left (dx > 0) or right (dx < 0) of the strip
+	local row : {TreeNodeId} = {}
+	if settings.offsetX > 0 then row[#row + 1] = spacer(settings.offsetX, 1) end
+	row[#row + 1] = strip
+	if settings.offsetX < 0 then row[#row + 1] = spacer(-settings.offsetX, 1) end
+
+	-- vertical offset: spacer above (dy > 0) or below (dy < 0) the strip
+	local column : {TreeNodeId} = {}
+	local offsetY = settings.offsetY
+	if settings.alignWithLayersButton then
+		-- center on the layers button; strips taller than the button align with its top edge instead
+		local stripHeight = px(config.height)
+		offsetY = math.max(LAYERS_BUTTON_TOP - config.margin,
+			math.floor(LAYERS_BUTTON_CENTER_Y - config.margin - stripHeight / 2 + 0.5))
+	end
+	if offsetY > 0 then column[#column + 1] = spacer(1, offsetY) end
+	column[#column + 1] = builtin.BoxLayout{
+		orientation = builtin.type.Orientation.Horizontal,
+		children = row,
+	}
+	if offsetY < 0 then column[#column + 1] = spacer(1, -offsetY) end
+
 	local rootChildren : {TreeNodeId} = {}
 	rootChildren[#rootChildren + 1] = builtin.Component{
+		mouseTransparent = true,
 		meta = { styleSheet = marginStyle },
 		layout = builtin.BoxLayout{
-			child = builtin.Component{
-				meta = { styleSheet = stripStyle },
-				layout = builtin.FloatingLayout{ children = children },
-			},
+			orientation = builtin.type.Orientation.Vertical,
+			children = column,
 		},
 	}
 
