@@ -15,7 +15,7 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 
 | Setting | Options |
 |---|---|
-| Compass position | Top/middle/bottom × left/center/right, or Game bar |
+| Compass position | Top/middle/bottom × left/right, or Game bar |
 | Compass size | Small, Medium, Large (screen compass only) |
 | Game bar text | Direction, Direction and degrees, Degrees |
 

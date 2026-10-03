@@ -12,16 +12,14 @@
             "uiType": "ComboBox",
             "values": [
                 "Top left",
-                "Top center",
                 "Top right",
                 "Middle left",
                 "Middle right",
                 "Bottom left",
-                "Bottom center",
                 "Bottom right",
                 "Game bar"
             ],
-            "defaultIndex": 2
+            "defaultIndex": 1
         },
         {
             "key": "size",

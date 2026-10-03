@@ -35,16 +35,14 @@ local LAYERS_BUTTON_CENTER_Y = 32
 
 local POSITIONS : {{number}} = {
 	{ 0.0, 0.0, 56, 0 }, -- Top left (right of the layers button, vertically aligned with it)
-	{ 0.5, 0.0, 0, 56 }, -- Top center (below the notification icons, which fill the top center)
 	{ 1.0, 0.0, 0, 0 },  -- Top right
 	{ 0.0, 0.5, 56, 0 }, -- Middle left (right of the layers menu column)
 	{ 1.0, 0.5, 0, 0 },  -- Middle right
 	{ 0.0, 1.0, 0, -90 }, -- Bottom left (above the Account panel of the game bar)
-	{ 0.5, 1.0, 0, 0 },  -- Bottom center
-	{ 1.0, 1.0, 0, 0 },  -- Bottom right
+	{ 1.0, 1.0, 0, -74 }, -- Bottom right (above the right part of the game bar)
 }
 local POSITION_GAME_BAR = #POSITIONS -- the last option, "Game bar", comes right after the screen positions
-local DEFAULT_POSITION = 2
+local DEFAULT_POSITION = 1 -- Top right
 
 -- Options of the "size" mod param, in the same order as in mod.json.
 local SCALES : {number} = { 0.75, 1.0, 1.5 }
