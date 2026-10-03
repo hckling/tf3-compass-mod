@@ -39,7 +39,7 @@ local POSITIONS : {{number}} = {
 	{ 1.0, 0.0, 0, 0 },  -- Top right
 	{ 0.0, 0.5, 56, 0 }, -- Middle left (right of the layers menu column)
 	{ 1.0, 0.5, 0, 0 },  -- Middle right
-	{ 0.0, 1.0, 0, 0 },  -- Bottom left
+	{ 0.0, 1.0, 0, -90 }, -- Bottom left (above the Account panel of the game bar)
 	{ 0.5, 1.0, 0, 0 },  -- Bottom center
 	{ 1.0, 1.0, 0, 0 },  -- Bottom right
 }
