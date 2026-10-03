@@ -37,7 +37,7 @@ local POSITIONS : {{number}} = {
 	{ 0.0, 0.0, 56, 0 }, -- Top left (right of the layers button, vertically aligned with it)
 	{ 0.5, 0.0, 0, 56 }, -- Top center (below the notification icons, which fill the top center)
 	{ 1.0, 0.0, 0, 0 },  -- Top right
-	{ 0.0, 0.5, 0, 0 },  -- Middle left
+	{ 0.0, 0.5, 56, 0 }, -- Middle left (right of the layers menu column)
 	{ 1.0, 0.5, 0, 0 },  -- Middle right
 	{ 0.0, 1.0, 0, 0 },  -- Bottom left
 	{ 0.5, 1.0, 0, 0 },  -- Bottom center
