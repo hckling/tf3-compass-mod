@@ -5,9 +5,9 @@
             "role": "CREATOR"
         }
     ],
-    "description": "Shows a small strip compass in the top right corner of the screen that follows the camera direction.",
+    "description": "Shows which way the camera is facing: as text in the game bar next to Earnings (default), or as a compass strip in a corner or at the side of the screen. Choose the position, size and text style in the mod settings. Purely cosmetic, achievements stay enabled.",
     "name": "Compass",
-    "summary": "Always-visible camera compass in the top right corner.",
+    "summary": "Shows which way the camera faces, as text in the game bar or as a compass strip on screen.",
     "tags": [
         "Script Mod"
     ],
