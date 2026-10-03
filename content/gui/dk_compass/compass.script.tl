@@ -15,7 +15,7 @@ local config = {
 	highlightFontSize = 24, -- size of the highlighted letter
 	margin = 10,          -- distance from the screen edge in pixels
 	borderWidth = 1,      -- strip border in pixels
-	markerWidth = 3,      -- centre marker (tick at the top of the strip) in pixels
+	markerWidth = 3,      -- center marker (tick at the top of the strip) in pixels
 	markerHeight = 4,
 	visibleSpanDeg = 120, -- how many degrees of the horizon the strip shows
 	edgeInset = 0.06,     -- keeps letters this fraction of the strip away from its ends
@@ -28,15 +28,15 @@ local config = {
 }
 
 -- Options of the "position" mod param, in the same order as in mod.json.
--- h: 0 = left, 0.5 = centre, 1 = right; v: 0 = top, 0.5 = middle, 1 = bottom
+-- h: 0 = left, 0.5 = center, 1 = right; v: 0 = top, 0.5 = middle, 1 = bottom
 local POSITIONS : {{number}} = {
 	{ 0.0, 0.0 }, -- Top left
-	{ 0.5, 0.0 }, -- Top centre
+	{ 0.5, 0.0 }, -- Top center
 	{ 1.0, 0.0 }, -- Top right
 	{ 0.0, 0.5 }, -- Middle left
 	{ 1.0, 0.5 }, -- Middle right
 	{ 0.0, 1.0 }, -- Bottom left
-	{ 0.5, 1.0 }, -- Bottom centre
+	{ 0.5, 1.0 }, -- Bottom center
 	{ 1.0, 1.0 }, -- Bottom right
 }
 local POSITION_GAME_BAR = #POSITIONS -- the last option, "Game bar", comes right after the screen positions
@@ -115,7 +115,7 @@ local LABELS : {Label} = {
 
 -- Full direction names for the game bar, every 45 degrees starting at north.
 local DIRECTION_NAMES : {string} = {
-	"North", "North-east", "East", "South-east", "South", "South-west", "West", "North-west",
+	"North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest",
 }
 
 -- Width of the game bar text per "gameBarText" option, so the bar doesn't shift
@@ -204,7 +204,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 	local marginStyle = api.gui.StyleSheet.new()
 	marginStyle.padding = api.type.Vec4f.new(config.margin, config.margin, config.margin, config.margin)
 
-	-- the label closest to the centre of the strip is highlighted
+	-- the label closest to the center of the strip is highlighted
 	local halfSpan = config.visibleSpanDeg / 2
 	local closestText : string = nil
 	local closestDist = 360
@@ -239,7 +239,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 		end
 	end
 
-	-- centre marker: a small yellow tick hanging from the top edge of the strip
+	-- center marker: a small yellow tick hanging from the top edge of the strip
 	children[#children + 1] = builtin.FloatingLayoutChild{
 		localKey = "marker",
 		h = 0.5,

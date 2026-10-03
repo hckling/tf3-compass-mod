@@ -5,7 +5,7 @@
 Shows which direction the camera is facing. "N" matches north on the minimap.
 
 - **On screen:** a small strip compass (N, NE, E, …) that scrolls as you turn the camera, with the direction you face highlighted.
-- **In the game bar:** the direction as text next to Earnings, e.g. "North-west", "North-west 315°" or "315°".
+- **In the game bar:** the direction as text next to Earnings, e.g. "Northwest", "Northwest 315°" or "315°".
 
 Purely cosmetic: it doesn't change the savegame and achievements stay enabled.
 
@@ -15,7 +15,7 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 
 | Setting | Options |
 |---|---|
-| Compass position | Top/middle/bottom × left/centre/right, or Game bar |
+| Compass position | Top/middle/bottom × left/center/right, or Game bar |
 | Compass size | Small, Medium, Large, Extra large (screen compass only) |
 | Game bar text | Direction, Direction and degrees, Degrees |
 

@@ -12,12 +12,12 @@
             "uiType": "ComboBox",
             "values": [
                 "Top left",
-                "Top centre",
+                "Top center",
                 "Top right",
                 "Middle left",
                 "Middle right",
                 "Bottom left",
-                "Bottom centre",
+                "Bottom center",
                 "Bottom right",
                 "Game bar"
             ],
