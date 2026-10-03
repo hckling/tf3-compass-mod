@@ -235,6 +235,8 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 				v = 0.5,
 				item = builtin.TextView{
 					meta = {
+						-- not in the type definitions, but the base game uses it in meta too (game_bar.tl)
+						mouseTransparent = true,
 						class = isClosest and "font-scale-headline" or nil,
 						styleSheet = styleutil.makeStyle{
 							color = isClosest and config.highlightColor or config.textColor,
