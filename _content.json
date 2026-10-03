@@ -1,0 +1,9 @@
+{
+    "archives": null,
+    "files": [
+        "gui/dk_compass/compass.css.lua",
+        "gui/dk_compass/compass.res.lua",
+        "gui/dk_compass/compass.script.tl",
+        "gui/dk_compass/compass_gamebar.res.lua"
+    ]
+}

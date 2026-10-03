@@ -1,0 +1,15 @@
+{
+    "authors": [
+        {
+            "name": "Daniel Kling",
+            "role": "CREATOR"
+        }
+    ],
+    "description": "Shows a small strip compass in the top right corner of the screen that follows the camera direction.",
+    "name": "Compass",
+    "summary": "Always-visible camera compass in the top right corner.",
+    "tags": [
+        "Script Mod"
+    ],
+    "url": ""
+}

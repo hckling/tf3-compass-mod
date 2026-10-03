@@ -1,0 +1,64 @@
+{
+    "cosmetic": true,
+    "dependencies": null,
+    "incompatibilities": null,
+    "modId": "dk_compass",
+    "options": null,
+    "params": [
+        {
+            "key": "position",
+            "name": "Compass position",
+            "tooltip": "Where on the screen the compass is shown.",
+            "uiType": "ComboBox",
+            "values": [
+                "Top left",
+                "Top centre",
+                "Top right",
+                "Middle left",
+                "Middle right",
+                "Bottom left",
+                "Bottom centre",
+                "Bottom right",
+                "Game bar"
+            ],
+            "defaultIndex": 2
+        },
+        {
+            "key": "size",
+            "name": "Compass size",
+            "tooltip": "Size of the compass strip and its letters. Does not apply to the game bar.",
+            "uiType": "ComboBox",
+            "values": [
+                "Small",
+                "Medium",
+                "Large",
+                "Extra large"
+            ],
+            "defaultIndex": 1
+        },
+        {
+            "key": "gameBarText",
+            "name": "Game bar text",
+            "tooltip": "What the compass shows when it is placed in the game bar.",
+            "uiType": "ComboBox",
+            "values": [
+                "Direction",
+                "Direction and degrees",
+                "Degrees"
+            ],
+            "defaultIndex": 0
+        }
+    ],
+    "postRunScript": {
+        "fileName": ""
+    },
+    "preRunScript": {
+        "fileName": ""
+    },
+    "revision": 1,
+    "runScript": {
+        "fileName": ""
+    },
+    "severityAdd": "None",
+    "severityRemove": "None"
+}
