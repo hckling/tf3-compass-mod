@@ -1,6 +1,8 @@
 # Compass (Transport Fever 3 mod)
 
-Shows which direction the camera is facing.
+![Compass](_metadata/0.png)
+
+Shows which direction the camera is facing. "N" matches north on the minimap.
 
 - **On screen:** a small strip compass (N, NE, E, …) that scrolls as you turn the camera, with the direction you face highlighted.
 - **In the game bar:** the direction as text next to Earnings, e.g. "North-west", "North-west 315°" or "315°".
