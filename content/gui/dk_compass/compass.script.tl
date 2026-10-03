@@ -126,9 +126,10 @@ local DIRECTION_NAMES : {string} = {
 	"North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest",
 }
 
--- Width of the game bar text per "gameBarText" option, so the bar doesn't shift
--- when the text gets longer or shorter while turning the camera.
-local GAME_BAR_TEXT_WIDTHS : {integer} = { 110, 160, 50 }
+-- Style class of the game bar text per "gameBarText" option. compass.css.lua gives each
+-- a fixed width per font size setting, so the bar doesn't shift when the text gets
+-- longer or shorter while turning the camera.
+local GAME_BAR_TEXT_CLASSES : {string} = { "dk-gamebar-direction", "dk-gamebar-both", "dk-gamebar-degrees" }
 
 -- atan2 that works on any Lua version (two-argument math.atan is Lua 5.3+ only)
 local function atan2(y : number, x : number) : number
@@ -373,7 +374,7 @@ local DkCompassGameBarPlugin = react.RegisterPluginRecipe(game_bar_widgets.GameB
 			builtin.Component{
 				meta = {
 					tooltip = "Camera direction",
-					styleSheet = styleutil.makeStyle{ size = { GAME_BAR_TEXT_WIDTHS[mode + 1], -1 } },
+					class = GAME_BAR_TEXT_CLASSES[mode + 1],
 				},
 				layout = builtin.BoxLayout{
 					orientation = builtin.type.Orientation.Horizontal,
