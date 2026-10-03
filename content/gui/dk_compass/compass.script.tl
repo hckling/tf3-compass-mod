@@ -9,14 +9,19 @@ local MOD_ID = "dk_compass"
 -- Fixed settings. Position and size come from the mod settings (see mod.json params).
 -- Sizes are for "Medium" and get multiplied by the chosen size's scale.
 local config = {
-	width = 160,          -- strip width in pixels
-	height = 28,          -- strip height in pixels
+	width = 200,          -- strip width in pixels
+	height = 36,          -- strip height in pixels
 	fontSize = 16,        -- size of the direction letters
-	highlightFontSize = 20, -- size of the highlighted letter
+	highlightFontSize = 24, -- size of the highlighted letter
 	margin = 10,          -- distance from the screen edge in pixels
+	borderWidth = 1,      -- strip border in pixels
+	markerWidth = 3,      -- centre marker (tick at the top of the strip) in pixels
+	markerHeight = 4,
 	visibleSpanDeg = 120, -- how many degrees of the horizon the strip shows
+	edgeInset = 0.06,     -- keeps letters this fraction of the strip away from its ends
 	northOffsetDeg = 0,   -- adjust if the game's "north" turns out not to be world +y
-	backgroundColor = { 0.0, 0.0, 0.0, 0.55 },
+	backgroundColor = { 0.07, 0.09, 0.12, 0.85 },
+	borderColor = { 1.0, 1.0, 1.0, 0.25 },
 	textColor = { 0.85, 0.85, 0.85, 1.0 },
 	highlightColor = { 1.0, 0.85, 0.2, 1.0 },
 	debug = false,        -- log output to stdout.txt
@@ -186,9 +191,15 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 	end
 
 	-- styles are created fresh on every render, like the base game does
+	local function px(value : number) : integer
+		return math.max(1, math.floor(value * scale + 0.5))
+	end
+	local border = px(config.borderWidth)
 	local stripStyle = styleutil.makeStyle{
-		size = { math.floor(config.width * scale + 0.5), math.floor(config.height * scale + 0.5) },
+		size = { px(config.width), px(config.height) },
 		backgroundColor = config.backgroundColor,
+		borderColor = config.borderColor,
+		borderWidth = { border, border, border, border },
 	}
 	local marginStyle = api.gui.StyleSheet.new()
 	marginStyle.padding = api.type.Vec4f.new(config.margin, config.margin, config.margin, config.margin)
@@ -212,14 +223,14 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 			local isClosest = label.text == closestText
 			children[#children + 1] = builtin.FloatingLayoutChild{
 				localKey = label.text,
-				h = 0.5 + rel / (2 * halfSpan),
+				h = 0.5 + (1 - 2 * config.edgeInset) * rel / (2 * halfSpan),
 				v = 0.5,
 				item = builtin.TextView{
 					meta = {
 						class = isClosest and "font-scale-headline" or nil,
 						styleSheet = styleutil.makeStyle{
 							color = isClosest and config.highlightColor or config.textColor,
-							fontSize = math.floor((isClosest and config.highlightFontSize or config.fontSize) * scale + 0.5),
+							fontSize = px(isClosest and config.highlightFontSize or config.fontSize),
 						},
 					},
 					text = label.text,
@@ -227,6 +238,21 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 			}
 		end
 	end
+
+	-- centre marker: a small yellow tick hanging from the top edge of the strip
+	children[#children + 1] = builtin.FloatingLayoutChild{
+		localKey = "marker",
+		h = 0.5,
+		v = 0.0,
+		item = builtin.Component{
+			meta = {
+				styleSheet = styleutil.makeStyle{
+					size = { px(config.markerWidth), px(config.markerHeight) },
+					backgroundColor = config.highlightColor,
+				},
+			},
+		},
+	}
 
 	local rootChildren : {TreeNodeId} = {}
 	rootChildren[#rootChildren + 1] = builtin.Component{
