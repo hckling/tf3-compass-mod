@@ -35,7 +35,7 @@ local LAYERS_BUTTON_CENTER_Y = 32
 
 local POSITIONS : {{number}} = {
 	{ 0.0, 0.0, 56, 0 }, -- Top left (right of the layers button, vertically aligned with it)
-	{ 0.5, 0.0, 0, 0 },  -- Top center
+	{ 0.5, 0.0, 0, 56 }, -- Top center (below the notification icons, which fill the top center)
 	{ 1.0, 0.0, 0, 0 },  -- Top right
 	{ 0.0, 0.5, 0, 0 },  -- Middle left
 	{ 1.0, 0.5, 0, 0 },  -- Middle right
@@ -47,7 +47,7 @@ local POSITION_GAME_BAR = #POSITIONS -- the last option, "Game bar", comes right
 local DEFAULT_POSITION = 2
 
 -- Options of the "size" mod param, in the same order as in mod.json.
-local SCALES : {number} = { 0.75, 1.0, 1.5, 2.0 }
+local SCALES : {number} = { 0.75, 1.0, 1.5 }
 local DEFAULT_SIZE = 1
 
 -- Options of the "gameBarText" mod param, in the same order as in mod.json.

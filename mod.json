@@ -31,8 +31,7 @@
             "values": [
                 "Small",
                 "Medium",
-                "Large",
-                "Extra large"
+                "Large"
             ],
             "defaultIndex": 1
         },
