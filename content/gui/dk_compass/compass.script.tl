@@ -42,7 +42,7 @@ local POSITIONS : {{number}} = {
 	{ 1.0, 1.0, 0, -74 }, -- Bottom right (above the right part of the game bar)
 }
 local POSITION_GAME_BAR = #POSITIONS -- the last option, "Game bar", comes right after the screen positions
-local DEFAULT_POSITION = 1 -- Top right
+local DEFAULT_POSITION = POSITION_GAME_BAR -- least intrusive
 
 -- Options of the "size" mod param, in the same order as in mod.json.
 local SCALES : {number} = { 0.75, 1.0, 1.5 }
