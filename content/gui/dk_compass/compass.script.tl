@@ -54,7 +54,8 @@ local record Settings
 	gameBarText : integer
 end
 
--- Reads the chosen mod settings. Param values are the 0-based index of the chosen option.
+-- Reads the chosen mod settings. The game stores the 1-based index of the chosen option
+-- (even though "defaultIndex" in mod.json is 0-based); we convert to 0-based here.
 -- Falls back to the defaults if the params can't be read.
 local function loadSettings() : Settings
 	local positionIndex = DEFAULT_POSITION
@@ -65,17 +66,20 @@ local function loadSettings() : Settings
 	end)
 	if ok and allParams ~= nil and allParams[MOD_ID] ~= nil then
 		local params = allParams[MOD_ID] as {string : integer}
-		if params.position ~= nil and params.position >= 0 and params.position <= POSITION_GAME_BAR then
-			positionIndex = params.position
+		local position = params.position and params.position - 1
+		local size = params.size and params.size - 1
+		local text = params.gameBarText and params.gameBarText - 1
+		if position ~= nil and position >= 0 and position <= POSITION_GAME_BAR then
+			positionIndex = position
 		end
-		if SCALES[(params.size or -1) + 1] ~= nil then
-			sizeIndex = params.size
+		if size ~= nil and SCALES[size + 1] ~= nil then
+			sizeIndex = size
 		end
-		if params.gameBarText ~= nil and params.gameBarText >= 0 and params.gameBarText <= GAME_BAR_TEXT_DEGREES then
-			gameBarText = params.gameBarText
+		if text ~= nil and text >= 0 and text <= GAME_BAR_TEXT_DEGREES then
+			gameBarText = text
 		end
 	end
-	print("[dk_compass] settings: position = " .. tostring(positionIndex) .. ", size = " .. tostring(sizeIndex)
+	print("[dk_compass] settings (0-based): position = " .. tostring(positionIndex) .. ", size = " .. tostring(sizeIndex)
 		.. ", gameBarText = " .. tostring(gameBarText)
 		.. (ok and "" or " (could not read mod params, using defaults)"))
 	local pos = POSITIONS[positionIndex + 1] or { 0.0, 0.0 }
