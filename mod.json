@@ -6,9 +6,46 @@
     "options": null,
     "params": [
         {
-            "key": "position",
-            "name": "Compass position",
-            "tooltip": "Where on the screen the compass is shown.",
+            "key": "gameBar",
+            "name": "Game bar",
+            "tooltip": "What the compass shows in the game bar, next to Earnings.",
+            "uiType": "ComboBox",
+            "values": [
+                "Off",
+                "Direction",
+                "Degrees",
+                "Direction and degrees"
+            ],
+            "defaultIndex": 1
+        },
+        {
+            "key": "gameBarNames",
+            "name": "Game bar direction names",
+            "tooltip": "Full names (Northwest) or short names (NW) in the game bar.",
+            "uiType": "ComboBox",
+            "values": [
+                "Full",
+                "Compact"
+            ],
+            "defaultIndex": 0
+        },
+        {
+            "key": "screenCompass",
+            "name": "Screen compass",
+            "tooltip": "A compass strip on screen that scrolls as you turn the camera.",
+            "uiType": "ComboBox",
+            "values": [
+                "Off",
+                "Letters",
+                "Letters and degrees",
+                "Degrees"
+            ],
+            "defaultIndex": 0
+        },
+        {
+            "key": "screenPosition",
+            "name": "Screen compass position",
+            "tooltip": "Where on the screen the compass strip is shown.",
             "uiType": "ComboBox",
             "values": [
                 "Top left",
@@ -16,15 +53,14 @@
                 "Middle left",
                 "Middle right",
                 "Bottom left",
-                "Bottom right",
-                "Game bar"
+                "Bottom right"
             ],
-            "defaultIndex": 6
+            "defaultIndex": 1
         },
         {
             "key": "size",
-            "name": "Compass size",
-            "tooltip": "Size of the compass strip and its letters. Does not apply to the game bar.",
+            "name": "Screen compass size",
+            "tooltip": "Size of the compass strip and its letters.",
             "uiType": "ComboBox",
             "values": [
                 "Small",
@@ -34,14 +70,13 @@
             "defaultIndex": 1
         },
         {
-            "key": "gameBarText",
-            "name": "Game bar text",
-            "tooltip": "What the compass shows when it is placed in the game bar.",
+            "key": "north",
+            "name": "North",
+            "tooltip": "Map: north is the top of the minimap. Sun: the sun rises in the east and stands in the north at noon, as in the southern hemisphere.",
             "uiType": "ComboBox",
             "values": [
-                "Direction",
-                "Direction and degrees",
-                "Degrees"
+                "Map",
+                "Sun"
             ],
             "defaultIndex": 0
         }
@@ -52,7 +87,7 @@
     "preRunScript": {
         "fileName": ""
     },
-    "revision": 2,
+    "revision": 3,
     "runScript": {
         "fileName": ""
     },

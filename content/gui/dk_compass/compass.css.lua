@@ -30,25 +30,29 @@ function data()
 	a("R::DkCompassGameBarPlugin", {
 		gravity = { 0.5, 0.5 },
 	})
-	a("R::DkCompassGameBarPlugin BoxLayout", {
+	-- Only the outer layout gets the spacing: on the inner layout (inside the fixed-width
+	-- text box below) it would eat 2 x 14 px of the box and cut the text off.
+	a("R::DkCompassGameBarPlugin > BoxLayout", {
 		innerSpacing = { 8, 0 },
 		outerSpacing = { 14, 0 },
 	})
 
 	-- Fixed text width per text style and font size setting (headline font: 16 / 19 / 21 px),
-	-- wide enough for the longest text: "Northwest", "Northwest 359°" and "359°".
+	-- wide enough for the longest text: "Northwest", "Northwest 359°", "359°", "NW", "NW 359°".
 	-- The rule without a font class is the fallback, sized for the large font.
 	local widths = {
-		{ font = nil,             direction = 144, both = 204, degrees = 54 },
-		{ font = "!font-small ",  direction = 112, both = 160, degrees = 43 },
-		{ font = "!font-medium ", direction = 132, both = 188, degrees = 50 },
-		{ font = "!font-large ",  direction = 144, both = 204, degrees = 54 },
+		{ font = nil,             direction = 116, both = 176, degrees = 56, directionCompact = 38, bothCompact = 84 },
+		{ font = "!font-small ",  direction = 84,  both = 132, degrees = 44, directionCompact = 30, bothCompact = 66 },
+		{ font = "!font-medium ", direction = 104, both = 160, degrees = 51, directionCompact = 35, bothCompact = 76 },
+		{ font = "!font-large ",  direction = 116, both = 176, degrees = 56, directionCompact = 38, bothCompact = 84 },
 	}
 	for _, w in ipairs(widths) do
 		local prefix = w.font or ""
 		a(prefix .. "!dk-gamebar-direction", { size = { w.direction, -1 } })
 		a(prefix .. "!dk-gamebar-both", { size = { w.both, -1 } })
 		a(prefix .. "!dk-gamebar-degrees", { size = { w.degrees, -1 } })
+		a(prefix .. "!dk-gamebar-direction-compact", { size = { w.directionCompact, -1 } })
+		a(prefix .. "!dk-gamebar-both-compact", { size = { w.bothCompact, -1 } })
 	end
 
 	return result
