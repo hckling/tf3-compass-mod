@@ -21,9 +21,9 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 | Screen compass | Off (default), Letters, Letters and degrees, Degrees |
 | Screen compass position | Top/middle/bottom × left/right (default top right) |
 | Screen compass size | Small, Medium (default), Large |
-| North | Map (top of the minimap, default), Sun |
+| North | Map (top of the minimap, default), Sun (rises in the east) |
 
-"North: Sun" turns the compass so the noon sun is in the north: the game's sun moves like in the
+"Sun (rises in the east)" turns the compass so the noon sun is in the north: the game's sun moves like in the
 southern hemisphere (measured in game: noon sun at map heading ~100°, sunrise south of east in November).
 
 ## Installation

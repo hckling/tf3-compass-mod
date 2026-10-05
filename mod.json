@@ -72,11 +72,11 @@
         {
             "key": "north",
             "name": "North",
-            "tooltip": "Map: north is the top of the minimap. Sun: the sun rises in the east and stands in the north at noon, as in the southern hemisphere.",
+            "tooltip": "Map: north is the top of the minimap. Sun: the sun rises in the east and sets in the west. The game's sun moves like in the southern hemisphere, so at midday it is in the north.",
             "uiType": "ComboBox",
             "values": [
                 "Map",
-                "Sun"
+                "Sun (rises in the east)"
             ],
             "defaultIndex": 0
         }
