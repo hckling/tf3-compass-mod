@@ -2,7 +2,12 @@
 
 The version number is the `revision` in `mod.json`.
 
-## Version 4
+## Version 5
+
+- New setting "Follow view shows": the camera direction, or the direction the followed vehicle is moving. The compass keeps the travel direction while you orbit, zoom or look around.
+- Fixed: opening the mod settings from the in-game pause menu crashed the interface (version 4 was never released with this bug).
+
+## Version 4 (not released separately, included in version 5)
 
 - New screen compass position: Top center (below the notification icons).
 - New setting "Show in free camera and follow view": the game hides its normal interface there, so the compass can now be shown in those views too. Off by default.

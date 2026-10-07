@@ -70,6 +70,17 @@
             "defaultIndex": 0
         },
         {
+            "key": "followHeading",
+            "name": "Follow view shows",
+            "tooltip": "When the camera follows a vehicle: the direction of the camera, or the direction the vehicle is moving (the camera direction while it stands still). Needs \"Show in free camera and follow view\".",
+            "uiType": "ComboBox",
+            "values": [
+                "Camera direction",
+                "Vehicle travel direction"
+            ],
+            "defaultIndex": 0
+        },
+        {
             "key": "size",
             "name": "Screen compass size",
             "tooltip": "Size of the compass strip and its letters.",
@@ -99,7 +110,7 @@
     "preRunScript": {
         "fileName": ""
     },
-    "revision": 4,
+    "revision": 5,
     "runScript": {
         "fileName": ""
     },

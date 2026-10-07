@@ -86,6 +86,7 @@ local record Settings
 	scale : number
 	northOffsetDeg : number
 	cameraViews : boolean
+	vehicleHeading : boolean
 end
 
 -- Reads the chosen mod settings. The game stores the 1-based index of the chosen option
@@ -133,6 +134,7 @@ local function loadSettings() : Settings
 	local compactNames = option("gameBarNames", 2) == 1
 	local sunNorth = option("north", 2) == 1
 	local cameraViews = option("cameraViews", 2) == 1
+	local vehicleHeading = option("followHeading", 2) == 1
 
 	local okEnv, sunRotation = pcall(function() : number
 		return api.gui.rendering.getEnvironment().atmosphere.sunRotation
@@ -144,6 +146,7 @@ local function loadSettings() : Settings
 		.. ", size = " .. tostring(sizeIndex)
 		.. ", sunNorth = " .. tostring(sunNorth)
 		.. ", cameraViews = " .. tostring(cameraViews)
+		.. ", vehicleHeading = " .. tostring(vehicleHeading)
 		.. ", environment sunRotation = " .. (okEnv and tostring(sunRotation) or "n/a")
 		.. (ok and "" or " (could not read mod params, using defaults)"))
 
@@ -160,6 +163,7 @@ local function loadSettings() : Settings
 		scale = SCALES[sizeIndex + 1],
 		northOffsetDeg = sunNorth and config.sunNoonMapHeadingDeg or 0,
 		cameraViews = cameraViews,
+		vehicleHeading = vehicleHeading, -- only has an effect while the camera follows a vehicle
 	}
 end
 
@@ -202,12 +206,9 @@ local function wrap180(a : number) : number
 	return a
 end
 
--- Camera heading in degrees, clockwise from north (world +y, the top of the minimap,
--- turned by northOffsetDeg). Returns nil when looking almost straight down.
-local function getHeadingDeg(northOffsetDeg : number) : number
-	local eye = api.gui.camera.getEye()
-	local center = api.gui.camera.getCenter()
-	local dx, dy, dz = center.x - eye.x, center.y - eye.y, center.z - eye.z
+-- Heading of a direction vector in degrees, clockwise from north (world +y, the top of the
+-- minimap, turned by northOffsetDeg). Returns nil when the vector points almost straight up or down.
+local function headingOf(dx : number, dy : number, dz : number, northOffsetDeg : number) : number
 	local horizontalSq = dx * dx + dy * dy
 	if horizontalSq < 1e-4 * (horizontalSq + dz * dz) then
 		return nil
@@ -215,16 +216,98 @@ local function getHeadingDeg(northOffsetDeg : number) : number
 	return (math.deg(atan2(dx, dy)) - northOffsetDeg) % 360
 end
 
--- Hook: camera heading in whole degrees, updated every frame. Only re-renders when it changes.
-local function useHeading(northOffsetDeg : number) : ReactStateT<integer>
+-- Camera heading in degrees. Returns nil when looking almost straight down.
+local function getCameraHeadingDeg(northOffsetDeg : number) : number
+	local eye = api.gui.camera.getEye()
+	local center = api.gui.camera.getCenter()
+	return headingOf(center.x - eye.x, center.y - eye.y, center.z - eye.z, northOffsetDeg)
+end
+
+-- Travel direction for follow view, measured from how the camera moves. The game's
+-- api.gui.camera.getFollowEntity() can't be used: it returns -1 in the game's own follow view.
+-- While the camera follows a vehicle, the vehicle's movement moves the camera eye and its center
+-- (look-at point) by the same amount. Orbiting, looking around in the cockpit or zooming instead
+-- changes the line from eye to center. So the movement is only measured while that line stays
+-- the same; while the player moves the camera, the last measured direction is kept.
+local TRAVEL_MIN_DISTANCE = 3   -- metres the camera must move before its direction is used
+local TRAVEL_MAX_JUMP = 200     -- larger jumps (switching to another vehicle) are ignored
+-- How much the eye-to-center line may change and still count as unchanged: a fixed part plus a
+-- fraction of the camera distance (about 3 degrees), so the camera's own lag in curves passes.
+local TRAVEL_CAMERA_TOLERANCE = 0.5
+local TRAVEL_CAMERA_TOLERANCE_FACTOR = 0.05
+local TRAVEL_HOLD_STEPS = 120   -- without movement for this many steps (~2 s), use the camera again
+
+local record TravelState
+	x : number           -- camera center when the direction was last measured
+	y : number
+	relX : number        -- eye-to-center line at that moment
+	relY : number
+	relZ : number
+	heading : number     -- last measured travel heading, nil if none
+	stillSteps : integer -- steps without enough movement
+end
+
+local function resetTravelAnchor(state : TravelState, c : Vec3f, e : Vec3f)
+	state.x, state.y = c.x, c.y
+	state.relX, state.relY, state.relZ = c.x - e.x, c.y - e.y, c.z - e.z
+end
+
+-- Updates the travel state with the current camera and returns the travel heading,
+-- or nil if the camera hasn't moved along with a vehicle recently.
+local function updateTravelHeading(state : TravelState, northOffsetDeg : number) : number
+	local c = api.gui.camera.getCenter()
+	local e = api.gui.camera.getEye()
+	if state.x == nil then
+		resetTravelAnchor(state, c, e)
+		state.stillSteps = 0
+		return nil
+	end
+
+	-- did the player move the camera relative to what it follows (orbit, look around, zoom)?
+	local rx, ry, rz = c.x - e.x - state.relX, c.y - e.y - state.relY, c.z - e.z - state.relZ
+	local cameraDistance = math.sqrt(state.relX * state.relX + state.relY * state.relY + state.relZ * state.relZ)
+	local tolerance = TRAVEL_CAMERA_TOLERANCE + TRAVEL_CAMERA_TOLERANCE_FACTOR * cameraDistance
+	if rx * rx + ry * ry + rz * rz > tolerance * tolerance then
+		resetTravelAnchor(state, c, e)
+		return state.heading -- keep the last measured direction
+	end
+
+	local dx, dy = c.x - state.x, c.y - state.y
+	local distSq = dx * dx + dy * dy
+	if distSq > TRAVEL_MAX_JUMP * TRAVEL_MAX_JUMP then
+		resetTravelAnchor(state, c, e)
+		state.heading, state.stillSteps = nil, 0
+	elseif distSq >= TRAVEL_MIN_DISTANCE * TRAVEL_MIN_DISTANCE then
+		state.heading = headingOf(dx, dy, 0, northOffsetDeg)
+		resetTravelAnchor(state, c, e)
+		state.stillSteps = 0
+	else
+		state.stillSteps = state.stillSteps + 1
+		if state.stillSteps > TRAVEL_HOLD_STEPS then
+			state.heading = nil
+		end
+	end
+	return state.heading
+end
+
+-- Hook: heading in whole degrees, updated every frame. Only re-renders when it changes.
+-- With useTravel, it shows the direction the followed vehicle is moving in, when it moves.
+local function useHeading(northOffsetDeg : number, useTravel? : boolean) : ReactStateT<integer>
 	local heading : ReactStateT<integer> = react.useState(0)
 	local stepCount : ReactRefT<integer> = react.useRef(0)
+	local travel : ReactRefT<TravelState> = react.useRef({ stillSteps = 0 })
 
 	react.onStep(function()
 		if heading:hasExpired() then
 			return
 		end
-		local h = getHeadingDeg(northOffsetDeg)
+		local h : number = nil
+		if useTravel then
+			h = updateTravelHeading(travel:get(), northOffsetDeg)
+		end
+		if h == nil then
+			h = getCameraHeadingDeg(northOffsetDeg)
+		end
 		if config.debug and stepCount:get() % 300 == 0 then
 			print("[dk_compass] step " .. tostring(stepCount:get()) .. ", heading = " .. tostring(h))
 		end
@@ -248,7 +331,7 @@ end
 
 local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings) : TreeNodeId
 	local scale = settings.scale
-	local heading = useHeading(settings.northOffsetDeg)
+	local heading = useHeading(settings.northOffsetDeg, settings.vehicleHeading)
 	local degrees = heading:old()
 
 	-- clicks pass through the compass to the map below
@@ -502,18 +585,29 @@ end)
 -- follow view and free camera. The callout overlay is a full-screen, click-through layer outside
 -- that interface, so with "Show in free camera and follow view" on, a second compass is added
 -- there. It carries the "dk-camera-view" class, which compass.css.lua only shows in those views
--- (!action-follow / !action-camera). The original callout container is called inside the
--- wrapper, so the interface (Api) it provides to the game stays the same.
+-- (!action-follow / !action-camera).
+-- The callout container provides an interface (Api) that the game and the menus reach through a
+-- reference to this wrapper's node. The original container is a separate node inside the wrapper
+-- and provides its Api there, so the wrapper forwards every Api call to that inner node.
 local CalloutContainerWithCompass = react.RegisterRecipe("CalloutContainer", function() : TreeNodeId
 	react.setMouseTransparent(true)
 	local settings : ReactRefT<Settings> = react.useRefLazy(loadSettings)
+
+	local innerRef = react.useNodeRef()
+	react.provideApi(setmetatable({}, {
+		__index = function(_ : table, key : string) : any
+			local inner = innerRef:get()
+			local innerApi = inner and inner:getApi() as table
+			return innerApi and innerApi[key]
+		end,
+	}))
 
 	local children : {TreeNodeId} = {
 		builtin.FloatingLayoutChild{
 			localKey = "callouts",
 			h = -1,
 			v = -1,
-			item = react.CallOriginalRecipe(callout_container),
+			item = react.CallOriginalRecipe(callout_container, react.ref(innerRef)),
 		},
 	}
 	local s = settings:get()
@@ -531,6 +625,7 @@ local CalloutContainerWithCompass = react.RegisterRecipe("CalloutContainer", fun
 			scale = s.scale,
 			northOffsetDeg = s.northOffsetDeg,
 			cameraViews = true,
+			vehicleHeading = s.vehicleHeading,
 		}
 		children[#children + 1] = builtin.FloatingLayoutChild{
 			localKey = "dk-compass-camera-view",

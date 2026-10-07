@@ -23,6 +23,7 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 | Screen compass size | Small, Medium (default), Large |
 | North | Map (top of the minimap, default), Sun (rises in the east) |
 | Show in free camera and follow view | Off (default), On |
+| Follow view shows | Camera direction (default), Vehicle travel direction |
 
 "Sun (rises in the east)" turns the compass so the noon sun is in the north: the game's sun moves like in the
 southern hemisphere (measured in game: noon sun at map heading ~100°, sunrise south of east in November).
