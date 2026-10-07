@@ -29,11 +29,15 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 There are no right-side positions: the game opens its vehicle, line, station and town windows along
 the right edge.
 
-Travel direction: when a vehicle is pinned from the line or vehicle manager, the game reports it
-(`api.gui.camera.getFollowEntity()`) and its exact direction is used. In the game's own follow view
-and cockpit view it doesn't, so the direction is measured from how the camera moves: the vehicle
-moves the camera's eye and its look-at point the same way, while the player moving the camera
-moves only one of them.
+Travel direction:
+- **Pinned from the line or vehicle manager:** the game reports the vehicle
+  (`api.gui.camera.getFollowEntity()`), and its exact direction is used.
+- **Cockpit view:** started through the game's free camera tool with the vehicle as
+  `cockpitCameraForEntity`; the mod wraps that tool's `push`/`pop`, so it knows the vehicle and uses its
+  exact direction. The same wrapping tells it when free camera is active, where the camera direction is shown.
+- **Follow view** (the engine's own follow mode): the game doesn't report the vehicle, so the direction is
+  measured from how the camera moves: the vehicle moves the camera's eye and its look-at point the same
+  way, while the player moving the camera moves only one of them.
 
 "Sun (rises in the east)" turns the compass so the noon sun is in the north: the game's sun moves like in the
 southern hemisphere (measured in game: noon sun at map heading ~100°, sunrise south of east in November).

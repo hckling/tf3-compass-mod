@@ -16,8 +16,8 @@ function data()
 		gravity = { -1, -1 },
 	})
 
-	-- The compass on the callout overlay is only for the views where the game hides its
-	-- normal interface: follow view (action-follow) and free camera (action-camera).
+	-- The compass on the callout overlay is only for the views where the game hides its normal
+	-- interface. Follow view, cockpit view and free camera all have the action-follow class.
 	-- (The callout overlay's own rule already makes its FloatingLayouts fill the screen.)
 	a("!dk-camera-view", {
 		visibility = "none",

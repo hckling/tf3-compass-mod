@@ -4,6 +4,7 @@ local styleutil = ug_require "::/gui/main/styleutil.tl" as StyleUtil
 local celebration_react_util = ug_require "::/game_mechanics/celebrations/celebration_react_util.tl" as CelebrationReactUtil
 local game_bar_widgets = ug_require "::/gui/game_bar/game_bar_widgets.tl" as GameBarWidgets
 local callout_container = ug_require "::/gui/main/callout_container.tl" as RecipeWithApi0<CalloutApi>
+local free_cam_options = ug_require "::/gui/main/free_cam_options.tl" as FreeCamOptions
 
 local MOD_ID = "dk_compass"
 
@@ -274,13 +275,45 @@ local record TravelState
 	stillSteps : integer -- steps without a measurement
 end
 
--- Direction of the followed vehicle as reported by the game. Only works when the camera
--- follows via api.gui.camera.followEntity() (e.g. from the line or vehicle manager);
--- returns nil otherwise.
+-- Free camera and cockpit view are both started with the game's FreeCamTool (the cockpit with
+-- the vehicle as cockpitCameraForEntity); the game's own follow view is not. Their style classes
+-- can't tell them apart, so we wrap the tool's push and pop to know which view is active.
+local record CameraTool
+	freeCamera : boolean          -- free camera is active (the player moves the camera)
+	cockpitEntity : integer       -- entity whose cockpit view is active, or nil
+end
+local cameraTool : CameraTool = { freeCamera = false, cockpitEntity = nil }
+
+do
+	local tool = free_cam_options.FreeCamTool as table
+	if tool ~= nil and not tool.dkCompassWrapped then
+		local originalPush = tool.push as function(any, any) : any
+		local originalPop = tool.pop as function(any) : any
+		tool.push = function(ctx : any, toolParam : any) : any
+			local cockpit = toolParam ~= nil and (toolParam as table).cockpitCameraForEntity or nil
+			cameraTool.cockpitEntity = cockpit as integer
+			cameraTool.freeCamera = cockpit == nil
+			return originalPush(ctx, toolParam)
+		end
+		tool.pop = function(...: any) : any
+			cameraTool.freeCamera = false
+			cameraTool.cockpitEntity = nil
+			return originalPop(...)
+		end
+		tool.dkCompassWrapped = true
+	end
+end
+
+-- Direction of the followed vehicle as reported by the game: the cockpit's vehicle, or the
+-- vehicle followed via api.gui.camera.followEntity() (e.g. pinned from the line or vehicle
+-- manager). Returns nil otherwise (e.g. in the game's own follow view).
 local function getFollowedVehicleHeadingDeg(northOffsetDeg : number) : number
 	local ok, heading = pcall(function() : number
-		local followed = api.gui.camera.getFollowEntity()
-		local entity = followed and followed[1]
+		local entity = cameraTool.cockpitEntity
+		if entity == nil then
+			local followed = api.gui.camera.getFollowEntity()
+			entity = followed and followed[1]
+		end
 		if entity == nil or entity < 0 then
 			return nil
 		end
@@ -374,7 +407,8 @@ local function useHeading(northOffsetDeg : number, useFollowedVehicle? : boolean
 		if useFollowedVehicle then
 			h = getFollowedVehicleHeadingDeg(northOffsetDeg)
 		end
-		if useTravel and h == nil then
+		-- in free camera the player moves the camera, which would look like a travelling vehicle
+		if useTravel and h == nil and not cameraTool.freeCamera then
 			h = updateTravelHeading(travel:get(), northOffsetDeg)
 		end
 		local isLocked = h ~= nil
@@ -716,8 +750,8 @@ end)
 -- The game hides its whole normal interface (including the celebrations overlay above) in
 -- follow view and free camera. The callout overlay is a full-screen, click-through layer outside
 -- that interface, so with "Show in free camera and follow view" on, a second compass is added
--- there. It carries the "dk-camera-view" class, which compass.css.lua only shows in those views
--- (!action-follow / !action-camera).
+-- there. It carries the "dk-camera-view" class, which
+-- compass.css.lua only shows in those views (!action-follow / !action-camera).
 -- The callout container provides an interface (Api) that the game and the menus reach through a
 -- reference to this wrapper's node. The original container is a separate node inside the wrapper
 -- and provides its Api there, so the wrapper forwards every Api call to that inner node.
@@ -744,32 +778,37 @@ local CalloutContainerWithCompass = react.RegisterRecipe("CalloutContainer", fun
 	}
 	local s = settings:get()
 	if s.cameraViews then
-		local cameraSettings : Settings = {
-			gameBar = s.gameBar,
-			compactNames = s.compactNames,
-			-- same style as the screen compass, or letters if the screen compass is off
-			screenCompass = s.screenCompass ~= SCREEN_OFF and s.screenCompass or SCREEN_LETTERS,
-			posH = s.posH,
-			posV = s.posV,
-			offsetX = s.offsetX,
-			offsetY = s.offsetY,
-			alignWithLayersButton = s.alignWithLayersButton,
-			scale = s.scale,
-			northOffsetDeg = s.northOffsetDeg,
-			cameraViews = true,
-			vehicleHeading = s.vehicleHeading,
-			isCameraView = true,
-		}
-		children[#children + 1] = builtin.FloatingLayoutChild{
-			localKey = "dk-compass-camera-view",
-			h = s.posH,
-			v = s.posV,
-			item = builtin.Component{
-				mouseTransparent = true,
-				meta = { class = "dk-camera-view" },
-				layout = builtin.BoxLayout{ child = DkCompass(cameraSettings) },
-			},
-		}
+		local function cameraViewCompass(localKey : string, class : string, measureTravel : boolean) : TreeNodeId
+			local cameraSettings : Settings = {
+				gameBar = s.gameBar,
+				compactNames = s.compactNames,
+				-- same style as the screen compass, or letters if the screen compass is off
+				screenCompass = s.screenCompass ~= SCREEN_OFF and s.screenCompass or SCREEN_LETTERS,
+				posH = s.posH,
+				posV = s.posV,
+				offsetX = s.offsetX,
+				offsetY = s.offsetY,
+				alignWithLayersButton = s.alignWithLayersButton,
+				scale = s.scale,
+				northOffsetDeg = s.northOffsetDeg,
+				cameraViews = true,
+				vehicleHeading = s.vehicleHeading,
+				isCameraView = measureTravel,
+			}
+			return builtin.FloatingLayoutChild{
+				localKey = localKey,
+				h = s.posH,
+				v = s.posV,
+				item = builtin.Component{
+					mouseTransparent = true,
+					meta = { class = class },
+					layout = builtin.BoxLayout{ child = DkCompass(cameraSettings) },
+				},
+			}
+		end
+		-- measures the travel direction in follow view; in free camera it shows the camera direction
+		-- (see cameraTool), in the cockpit the game's own direction of the vehicle
+		children[#children + 1] = cameraViewCompass("dk-compass-camera-view", "dk-camera-view", true)
 	end
 
 	return builtin.FloatingLayout{ children = children }
