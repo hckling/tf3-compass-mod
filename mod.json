@@ -43,18 +43,16 @@
             "defaultIndex": 0
         },
         {
-            "key": "screenPosition",
+            "key": "compassPosition",
             "name": "Screen compass position",
-            "tooltip": "Where on the screen the compass strip is shown.",
+            "tooltip": "Where on the screen the compass strip is shown. The right side is left free for the game's windows.",
             "uiType": "ComboBox",
             "values": [
                 "Top left",
-                "Top right",
+                "Top center",
                 "Middle left",
-                "Middle right",
                 "Bottom left",
-                "Bottom right",
-                "Top center"
+                "Bottom right"
             ],
             "defaultIndex": 1
         },
@@ -71,8 +69,8 @@
         },
         {
             "key": "followHeading",
-            "name": "Follow view shows",
-            "tooltip": "When the camera follows a vehicle: the direction of the camera, or the direction the vehicle is moving (the camera direction while it stands still). Needs \"Show in free camera and follow view\".",
+            "name": "When following a vehicle, show",
+            "tooltip": "When the camera follows a vehicle (follow view, cockpit, or pinned from the line or vehicle manager): the direction of the camera, or the direction the vehicle is moving. For follow view and cockpit, turn on \"Show in free camera and follow view\".",
             "uiType": "ComboBox",
             "values": [
                 "Camera direction",

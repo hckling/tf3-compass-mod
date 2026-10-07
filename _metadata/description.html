@@ -3,7 +3,9 @@
 <h2>Features</h2>
 <ul>
 <li><b>Game bar (default):</b> the direction next to Earnings, for example "Northwest", "NW", "Northwest 315°" or just "315°".</li>
-<li><b>Screen compass:</b> a strip with N, NE, E and so on that scrolls as you turn the camera, with the direction you face highlighted. Optionally with the heading in degrees underneath, or just the degrees. Place it in a corner, at the side, or at the top center of the screen, in one of three sizes. It can also be shown in free camera and follow view, where the game hides its normal interface, and there it can show the direction the followed vehicle is moving instead of the camera direction.</li>
+<li><b>Screen compass:</b> a strip with N, NE, E and so on that scrolls as you turn the camera, with the direction you face highlighted. Optionally with the heading in degrees underneath, or just the degrees. Place it at the top center, top left, middle left, bottom left or bottom right of the screen, in one of three sizes. The right side is left free for the game's windows.</li>
+<li><b>Free camera and follow view:</b> the game hides its normal interface there; the screen compass can stay.</li>
+<li><b>Follow a vehicle:</b> when the camera follows a vehicle (follow view, cockpit, or pinned from the line or vehicle manager), the compass can show the direction the vehicle is moving instead of the camera direction. A lock shows when it does.</li>
 <li><b>North:</b> follow the map (the top of the minimap) or the sun. The game's sun moves like in the southern hemisphere: with "Sun (rises in the east)" it rises in the east, sets in the west, and stands in the north at midday.</li>
 <li>Stays clear of the game's own buttons, and clicks pass through it.</li>
 <li>Adapts to the game's font size setting.</li>
@@ -16,9 +18,9 @@
 <li><b>Game bar:</b> Off, Direction, Degrees, Direction and degrees</li>
 <li><b>Game bar direction names:</b> Full (Northwest), Compact (NW)</li>
 <li><b>Screen compass:</b> Off, Letters, Letters and degrees, Degrees</li>
-<li><b>Screen compass position:</b> Top left, Top right, Middle left, Middle right, Bottom left, Bottom right, Top center</li>
+<li><b>Screen compass position:</b> Top left, Top center, Middle left, Bottom left, Bottom right</li>
 <li><b>Show in free camera and follow view:</b> Off, On</li>
-<li><b>Follow view shows:</b> Camera direction, Vehicle travel direction</li>
+<li><b>When following a vehicle, show:</b> Camera direction, Vehicle travel direction</li>
 <li><b>Screen compass size:</b> Small, Medium, Large</li>
 <li><b>North:</b> Map, Sun (rises in the east)</li>
 </ul>
@@ -27,9 +29,11 @@
 <h2>Recent changes</h2>
 <p><b>Version 5</b></p>
 <ul>
-<li>New screen compass position: Top center, below the notification icons.</li>
-<li>New setting "Show in free camera and follow view" (off by default): the game hides its normal interface there, now the compass can stay.</li>
-<li>New setting "Follow view shows": the camera direction, or the direction the followed vehicle is moving.</li>
+<li>The compass can show the travel direction of the vehicle the camera follows, with a lock as indicator.</li>
+<li>New setting "Show in free camera and follow view" (off by default).</li>
+<li>New screen compass position: Top center, below the notification icons. It is now the default.</li>
+<li>Removed the top right and middle right positions: the game's windows open there and the compass covered them. Those choices move to Top center.</li>
+<li>The highlighted direction no longer flickers right between two directions.</li>
 </ul>
 <p><b>Version 3</b></p>
 <ul>
@@ -39,5 +43,6 @@
 <li>New "North" setting: Map or Sun (rises in the east).</li>
 <li>Fixed: the degrees in the game bar were cut off after two digits.</li>
 </ul>
+
 <h2>Source code</h2>
 <p>The source code is available on GitHub: https://github.com/hckling/tf3-compass-mod</p>

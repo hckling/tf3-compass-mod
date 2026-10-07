@@ -22,6 +22,10 @@ local config = {
 	markerHeight = 4,
 	visibleSpanDeg = 120, -- how many degrees of the horizon the strip shows
 	edgeInset = 0.06,     -- keeps letters this fraction of the strip away from its ends
+	highlightStickinessDeg = 5, -- the highlighted letter changes this many degrees past the boundary
+	lockIcon = "::/gui/builtin/window/icons/lock.tga", -- shown while the compass follows a vehicle
+	lockIconSize = 14,    -- size of the lock on the screen strip
+	lockColumnWidth = 22, -- extra width of the screen strip while it shows the lock
 	-- Where the sun stands at noon, as a map heading (degrees clockwise from the top of the minimap),
 	-- measured in game. During the day the sun moves counter-clockwise on the map, like in the
 	-- southern hemisphere, so the "North: Sun" setting turns the compass so that the noon sun
@@ -49,21 +53,27 @@ local SCREEN_DEGREES = 3
 local LAYERS_BUTTON_TOP = 12
 local LAYERS_BUTTON_CENTER_Y = 32
 
--- Options of the "screenPosition" mod param, in the same order as in mod.json.
+-- Options of the "compassPosition" mod param, in the same order as in mod.json.
 -- h: 0 = left, 0.5 = center, 1 = right; v: 0 = top, 0.5 = middle, 1 = bottom
 -- dx, dy: extra offset in pixels to keep clear of the game's own HUD elements.
 --         Positive moves right/down, negative moves left/up.
+-- There are no top right and middle right positions: the game opens its vehicle, line, station
+-- and town windows along the right edge, from the top down to just above the game bar.
 local POSITIONS : {{number}} = {
 	{ 0.0, 0.0, 56, 0 }, -- Top left (right of the layers button, vertically aligned with it)
-	{ 1.0, 0.0, 0, 0 },  -- Top right
-	{ 0.0, 0.5, 56, 0 }, -- Middle left (right of the layers menu column)
-	{ 1.0, 0.5, 0, 0 },  -- Middle right
-	{ 0.0, 1.0, 0, -90 }, -- Bottom left (above the Account panel of the game bar)
-	{ 1.0, 1.0, 0, -74 }, -- Bottom right (above the right part of the game bar)
 	{ 0.5, 0.0, 0, 56 },  -- Top center (below the notification icons, which fill the top center)
+	{ 0.0, 0.5, 56, 0 }, -- Middle left (right of the layers menu column)
+	{ 0.0, 1.0, 0, -90 }, -- Bottom left (above the Account panel of the game bar)
+	{ 1.0, 1.0, 0, -74 }, -- Bottom right (above the right part of the game bar, below the windows)
 }
 local POSITION_TOP_LEFT = 0
-local DEFAULT_POSITION = 1 -- Top right
+local DEFAULT_POSITION = 1 -- Top center: never covered by the game's windows
+
+-- Earlier versions stored the position in other lists: "position" (revision 1-2: top left,
+-- top right, middle left, middle right, bottom left, bottom right, game bar) and "screenPosition"
+-- (revision 3-5: the same six, then top center). Maps their 1-based option to the new 0-based
+-- index; top right and middle right (nil) become the default.
+local OLD_POSITION_MAP : {integer : integer} = { [1] = 0, [3] = 2, [5] = 3, [6] = 4, [7] = 1 }
 
 -- Options of the "size" mod param.
 local SCALES : {number} = { 0.75, 1.0, 1.5 }
@@ -86,7 +96,8 @@ local record Settings
 	scale : number
 	northOffsetDeg : number
 	cameraViews : boolean
-	vehicleHeading : boolean
+	vehicleHeading : boolean -- the "Follow view shows" setting
+	isCameraView : boolean   -- the compass instance for free camera and follow view
 end
 
 -- Reads the chosen mod settings. The game stores the 1-based index of the chosen option
@@ -117,11 +128,16 @@ local function loadSettings() : Settings
 	-- Carry over the settings of revision 1 and 2 until the new settings have been saved.
 	local oldPosition = option("position", OLD_POSITION_COUNT)
 	local oldText = option("gameBarText", #OLD_GAME_BAR_TEXT)
-	if params["screenCompass"] == nil and oldPosition ~= nil and oldPosition < #POSITIONS then
+	if params["screenCompass"] == nil and oldPosition ~= nil and oldPosition < 6 then
 		-- the strip was shown at a screen position, and the game bar text was off
 		screenCompass = SCREEN_LETTERS
-		positionIndex = oldPosition
+		positionIndex = OLD_POSITION_MAP[oldPosition + 1] or DEFAULT_POSITION
 		gameBar = GAME_BAR_OFF
+	end
+	-- revision 3-5: "screenPosition"
+	local oldScreenPosition = option("screenPosition", 7)
+	if params["compassPosition"] == nil and oldScreenPosition ~= nil then
+		positionIndex = OLD_POSITION_MAP[oldScreenPosition + 1] or DEFAULT_POSITION
 	end
 	if params["gameBar"] == nil and oldText ~= nil and gameBar ~= GAME_BAR_OFF then
 		gameBar = OLD_GAME_BAR_TEXT[oldText + 1]
@@ -129,7 +145,7 @@ local function loadSettings() : Settings
 
 	gameBar = option("gameBar", 4) or gameBar
 	screenCompass = option("screenCompass", 4) or screenCompass
-	positionIndex = option("screenPosition", #POSITIONS) or positionIndex
+	positionIndex = option("compassPosition", #POSITIONS) or positionIndex
 	local sizeIndex = option("size", #SCALES) or DEFAULT_SIZE
 	local compactNames = option("gameBarNames", 2) == 1
 	local sunNorth = option("north", 2) == 1
@@ -142,7 +158,7 @@ local function loadSettings() : Settings
 	print("[dk_compass] settings (0-based): gameBar = " .. tostring(gameBar)
 		.. ", compactNames = " .. tostring(compactNames)
 		.. ", screenCompass = " .. tostring(screenCompass)
-		.. ", screenPosition = " .. tostring(positionIndex)
+		.. ", compassPosition = " .. tostring(positionIndex)
 		.. ", size = " .. tostring(sizeIndex)
 		.. ", sunNorth = " .. tostring(sunNorth)
 		.. ", cameraViews = " .. tostring(cameraViews)
@@ -163,7 +179,8 @@ local function loadSettings() : Settings
 		scale = SCALES[sizeIndex + 1],
 		northOffsetDeg = sunNorth and config.sunNoonMapHeadingDeg or 0,
 		cameraViews = cameraViews,
-		vehicleHeading = vehicleHeading, -- only has an effect while the camera follows a vehicle
+		vehicleHeading = vehicleHeading,
+		isCameraView = false,
 	}
 end
 
@@ -224,62 +241,109 @@ local function getCameraHeadingDeg(northOffsetDeg : number) : number
 end
 
 -- Travel direction for follow view, measured from how the camera moves. The game's
--- api.gui.camera.getFollowEntity() can't be used: it returns -1 in the game's own follow view.
--- While the camera follows a vehicle, the vehicle's movement moves the camera eye and its center
--- (look-at point) by the same amount. Orbiting, looking around in the cockpit or zooming instead
--- changes the line from eye to center. So the movement is only measured while that line stays
--- the same; while the player moves the camera, the last measured direction is kept.
-local TRAVEL_MIN_DISTANCE = 3   -- metres the camera must move before its direction is used
-local TRAVEL_MAX_JUMP = 200     -- larger jumps (switching to another vehicle) are ignored
--- How much the eye-to-center line may change and still count as unchanged: a fixed part plus a
--- fraction of the camera distance (about 3 degrees), so the camera's own lag in curves passes.
-local TRAVEL_CAMERA_TOLERANCE = 0.5
-local TRAVEL_CAMERA_TOLERANCE_FACTOR = 0.05
-local TRAVEL_HOLD_STEPS = 120   -- without movement for this many steps (~2 s), use the camera again
+-- api.gui.camera.getFollowEntity() only works when following was started from Lua (e.g. the line
+-- manager); in the game's own follow view it returns -1.
+-- While the camera follows a vehicle, one of the camera's two points is attached to the vehicle:
+-- the center (look-at point) in follow view, the eye in cockpit view. The other one moves when
+-- the player moves the camera (orbiting, looking around, zooming), and the chase camera of the
+-- initial follow view turns along with the vehicle. Every few metres the movement of both points
+-- is compared: if they moved the same way, that's the travel direction; if not, the one that
+-- continues the last travel direction is used.
+local TRAVEL_MIN_DISTANCE = 3   -- metres both points must move before a direction is measured
+local TRAVEL_MAX_JUMP = 200     -- larger jumps (switching to another vehicle) start over
+local TRAVEL_AGREE_DEG = 15     -- eye and center moving within this angle count as the same way
+local TRAVEL_CONTINUE_DEG = 30  -- otherwise, a point within this angle of the last direction is used
+local TRAVEL_STALE_DISTANCE = 50 -- one point this far with the other one still: start the measurement over
+local TRAVEL_HOLD_STEPS = 300   -- without a measurement for this many steps (~5 s), use the camera again
+local TRAVEL_SMOOTHING = 0.5    -- each measurement moves the shown direction this far towards the new value
 
-local record TravelState
-	x : number           -- camera center when the direction was last measured
-	y : number
-	relX : number        -- eye-to-center line at that moment
-	relY : number
-	relZ : number
-	heading : number     -- last measured travel heading, nil if none
-	stillSteps : integer -- steps without enough movement
+-- Moves a heading part of the way towards a new measurement, to smooth out measuring noise.
+local function blendHeading(old : number, new : number) : number
+	if old == nil then
+		return new
+	end
+	return (old + TRAVEL_SMOOTHING * wrap180(new - old)) % 360
 end
 
-local function resetTravelAnchor(state : TravelState, c : Vec3f, e : Vec3f)
-	state.x, state.y = c.x, c.y
-	state.relX, state.relY, state.relZ = c.x - e.x, c.y - e.y, c.z - e.z
+local record TravelState
+	cx : number          -- center and eye when the direction was last measured
+	cy : number
+	ex : number
+	ey : number
+	heading : number     -- last measured travel heading, nil if none
+	stillSteps : integer -- steps without a measurement
+end
+
+-- Direction of the followed vehicle as reported by the game. Only works when the camera
+-- follows via api.gui.camera.followEntity() (e.g. from the line or vehicle manager);
+-- returns nil otherwise.
+local function getFollowedVehicleHeadingDeg(northOffsetDeg : number) : number
+	local ok, heading = pcall(function() : number
+		local followed = api.gui.camera.getFollowEntity()
+		local entity = followed and followed[1]
+		if entity == nil or entity < 0 then
+			return nil
+		end
+		local dir = api.engine.util.vehicle.getDirection(entity)
+		if dir == nil then
+			return nil
+		end
+		return headingOf(dir.x, dir.y, dir.z, northOffsetDeg)
+	end)
+	return ok and heading or nil
 end
 
 -- Updates the travel state with the current camera and returns the travel heading,
--- or nil if the camera hasn't moved along with a vehicle recently.
+-- or nil if no travel could be measured recently.
 local function updateTravelHeading(state : TravelState, northOffsetDeg : number) : number
 	local c = api.gui.camera.getCenter()
 	local e = api.gui.camera.getEye()
-	if state.x == nil then
-		resetTravelAnchor(state, c, e)
-		state.stillSteps = 0
+	if state.cx == nil then
+		state.cx, state.cy, state.ex, state.ey, state.stillSteps = c.x, c.y, e.x, e.y, 0
 		return nil
 	end
 
-	-- did the player move the camera relative to what it follows (orbit, look around, zoom)?
-	local rx, ry, rz = c.x - e.x - state.relX, c.y - e.y - state.relY, c.z - e.z - state.relZ
-	local cameraDistance = math.sqrt(state.relX * state.relX + state.relY * state.relY + state.relZ * state.relZ)
-	local tolerance = TRAVEL_CAMERA_TOLERANCE + TRAVEL_CAMERA_TOLERANCE_FACTOR * cameraDistance
-	if rx * rx + ry * ry + rz * rz > tolerance * tolerance then
-		resetTravelAnchor(state, c, e)
-		return state.heading -- keep the last measured direction
+	local dcx, dcy = c.x - state.cx, c.y - state.cy -- movement of the center since the anchor
+	local dex, dey = e.x - state.ex, e.y - state.ey -- movement of the eye since the anchor
+	local dcSq, deSq = dcx * dcx + dcy * dcy, dex * dex + dey * dey
+	local minSq, jumpSq = TRAVEL_MIN_DISTANCE * TRAVEL_MIN_DISTANCE, TRAVEL_MAX_JUMP * TRAVEL_MAX_JUMP
+	local measured = false
+
+	if dcSq > jumpSq or deSq > jumpSq then
+		-- jumped to another place or vehicle: start over
+		state.heading = nil
+		state.cx, state.cy, state.ex, state.ey = c.x, c.y, e.x, e.y
+	elseif dcSq >= minSq and deSq >= minSq then
+		-- Only decide once BOTH points moved far enough. The point moved by the player usually
+		-- gets there much sooner; starting over at that moment would never let the point attached
+		-- to the vehicle get far enough.
+		local hc = headingOf(dcx, dcy, 0, northOffsetDeg)
+		local he = headingOf(dex, dey, 0, northOffsetDeg)
+		if math.abs(wrap180(hc - he)) <= TRAVEL_AGREE_DEG then
+			-- eye and center moved the same way: that's the travel direction
+			state.heading = blendHeading(state.heading, headingOf(dcx + dex, dcy + dey, 0, northOffsetDeg))
+			measured = true
+		elseif state.heading ~= nil then
+			-- the player moves the camera: whichever point continues the last direction is
+			-- the one attached to the vehicle (center in follow view, eye in cockpit view)
+			local diffC = math.abs(wrap180(hc - state.heading))
+			local diffE = math.abs(wrap180(he - state.heading))
+			local best, bestDiff = hc, diffC
+			if diffE < diffC then
+				best, bestDiff = he, diffE
+			end
+			if bestDiff <= TRAVEL_CONTINUE_DEG then
+				state.heading = blendHeading(state.heading, best)
+				measured = true
+			end
+		end
+		state.cx, state.cy, state.ex, state.ey = c.x, c.y, e.x, e.y
+	elseif dcSq > TRAVEL_STALE_DISTANCE * TRAVEL_STALE_DISTANCE or deSq > TRAVEL_STALE_DISTANCE * TRAVEL_STALE_DISTANCE then
+		-- one point moved far while the other hardly moved (e.g. orbiting a stopped vehicle): start over
+		state.cx, state.cy, state.ex, state.ey = c.x, c.y, e.x, e.y
 	end
 
-	local dx, dy = c.x - state.x, c.y - state.y
-	local distSq = dx * dx + dy * dy
-	if distSq > TRAVEL_MAX_JUMP * TRAVEL_MAX_JUMP then
-		resetTravelAnchor(state, c, e)
-		state.heading, state.stillSteps = nil, 0
-	elseif distSq >= TRAVEL_MIN_DISTANCE * TRAVEL_MIN_DISTANCE then
-		state.heading = headingOf(dx, dy, 0, northOffsetDeg)
-		resetTravelAnchor(state, c, e)
+	if measured then
 		state.stillSteps = 0
 	else
 		state.stillSteps = state.stillSteps + 1
@@ -291,9 +355,14 @@ local function updateTravelHeading(state : TravelState, northOffsetDeg : number)
 end
 
 -- Hook: heading in whole degrees, updated every frame. Only re-renders when it changes.
--- With useTravel, it shows the direction the followed vehicle is moving in, when it moves.
-local function useHeading(northOffsetDeg : number, useTravel? : boolean) : ReactStateT<integer>
+-- With useFollowedVehicle, it shows the direction of the vehicle the camera follows when the game
+-- reports one (pinned from the line or vehicle manager). With useTravel, it otherwise measures the
+-- travel direction from the camera's movement (follow and cockpit view, where the game doesn't
+-- report the vehicle). Without either, or when neither gives a direction, it shows the camera's.
+-- Also returns whether the heading currently comes from a vehicle ("locked") rather than the camera.
+local function useHeading(northOffsetDeg : number, useFollowedVehicle? : boolean, useTravel? : boolean) : ReactStateT<integer>, ReactStateT<boolean>
 	local heading : ReactStateT<integer> = react.useState(0)
+	local locked : ReactStateT<boolean> = react.useState(false)
 	local stepCount : ReactRefT<integer> = react.useRef(0)
 	local travel : ReactRefT<TravelState> = react.useRef({ stillSteps = 0 })
 
@@ -302,8 +371,15 @@ local function useHeading(northOffsetDeg : number, useTravel? : boolean) : React
 			return
 		end
 		local h : number = nil
-		if useTravel then
+		if useFollowedVehicle then
+			h = getFollowedVehicleHeadingDeg(northOffsetDeg)
+		end
+		if useTravel and h == nil then
 			h = updateTravelHeading(travel:get(), northOffsetDeg)
+		end
+		local isLocked = h ~= nil
+		if isLocked ~= locked:old() then
+			locked:set(isLocked)
 		end
 		if h == nil then
 			h = getCameraHeadingDeg(northOffsetDeg)
@@ -321,7 +397,7 @@ local function useHeading(northOffsetDeg : number, useTravel? : boolean) : React
 		end
 	end)
 
-	return heading
+	return heading, locked
 end
 
 -- Index (1-8) of the closest of the eight directions
@@ -331,11 +407,27 @@ end
 
 local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings) : TreeNodeId
 	local scale = settings.scale
-	local heading = useHeading(settings.northOffsetDeg, settings.vehicleHeading)
+	-- a pinned vehicle's direction everywhere; the measured travel direction only in free camera / follow view
+	local heading, locked = useHeading(settings.northOffsetDeg, settings.vehicleHeading, settings.isCameraView and settings.vehicleHeading)
 	local degrees = heading:old()
 
-	-- clicks pass through the compass to the map below
+	-- The highlighted direction only changes once the heading is clearly past the boundary
+	-- between two directions, so it doesn't flicker when the heading is right in between.
+	local highlightRef : ReactRefT<integer> = react.useRef(nil)
+	local highlight = directionIndex(degrees)
+	local previous = highlightRef:get()
+	if previous ~= nil and previous ~= highlight
+		and math.abs(wrap180(LABELS[previous].angle - degrees)) <= 22.5 + config.highlightStickinessDeg then
+		highlight = previous
+	end
+	highlightRef:set(highlight)
+
+	-- clicks pass through the compass to whatever is below it
 	react.setMouseTransparent(true)
+
+	local backgroundColor = config.backgroundColor
+	local textColor = config.textColor
+	local highlightColor = config.highlightColor
 
 	if config.debug then
 		print("[dk_compass] render, heading = " .. tostring(degrees))
@@ -370,7 +462,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 	if showLetters then
 		-- the label closest to the center of the strip is highlighted
 		local halfSpan = config.visibleSpanDeg / 2
-		local closest = LABELS[directionIndex(degrees)].text
+		local closest = LABELS[highlight].text
 		for _, label in ipairs(LABELS) do
 			local rel = wrap180(label.angle - degrees)
 			if math.abs(rel) < halfSpan then
@@ -380,7 +472,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 					h = 0.5 + (1 - 2 * config.edgeInset) * rel / (2 * halfSpan),
 					v = 0.5,
 					item = text(label.text,
-						isClosest and config.highlightColor or config.textColor,
+						isClosest and highlightColor or textColor,
 						isClosest and config.highlightFontSize or config.fontSize,
 						isClosest),
 				}
@@ -391,7 +483,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 			localKey = "degrees",
 			h = 0.5,
 			v = 0.5,
-			item = text(tostring(degrees) .. "°", config.highlightColor, config.highlightFontSize, true),
+			item = text(tostring(degrees) .. "°", highlightColor, config.highlightFontSize, true),
 		}
 	end
 
@@ -405,7 +497,7 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 			meta = {
 				styleSheet = styleutil.makeStyle{
 					size = { px(config.markerWidth), px(config.markerHeight) },
-					backgroundColor = config.highlightColor,
+					backgroundColor = highlightColor,
 				},
 			},
 		},
@@ -421,10 +513,10 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 
 	-- a fixed-size area whose children are placed with FloatingLayoutChild h/v
 	-- (compass.css.lua makes the FloatingLayout fill the area)
-	local function area(hgt : number, children : {TreeNodeId}) : TreeNodeId
+	local function area(hgt : number, children : {TreeNodeId}, width? : number) : TreeNodeId
 		return builtin.Component{
 			mouseTransparent = true,
-			meta = { styleSheet = styleutil.makeStyle{ size = { stripWidth, hgt } } },
+			meta = { styleSheet = styleutil.makeStyle{ size = { width or stripWidth, hgt } } },
 			layout = builtin.FloatingLayout{ children = children },
 		}
 	end
@@ -437,26 +529,56 @@ local DkCompass = react.RegisterRecipe("DkCompass", function(settings : Settings
 				localKey = "degrees",
 				h = 0.5,
 				v = 0.0,
-				item = text(tostring(degrees) .. "°", config.textColor, config.degreesFontSize, false),
+				item = text(tostring(degrees) .. "°", textColor, config.degreesFontSize, false),
 			},
 		})
 	end
 
 	-- the rounded shape comes from the "dk-compass-strip" rule in compass.css.lua,
 	-- which sets a nine-patch image that gets tinted with backgroundColor1
+	local stripContent : TreeNodeId = builtin.BoxLayout{
+		orientation = builtin.type.Orientation.Vertical,
+		children = stripRows,
+	}
+	local totalWidth = stripWidth
+	if locked:old() then
+		-- locked to a vehicle: a lock in an extra column on the left, so the letters and the
+		-- center notch stay exactly where they are
+		local lockColumnWidth = px(config.lockColumnWidth)
+		local lockSize = px(config.lockIconSize)
+		totalWidth = stripWidth + lockColumnWidth
+		stripContent = builtin.BoxLayout{
+			orientation = builtin.type.Orientation.Horizontal,
+			children = {
+				area(stripHeight, {
+					builtin.FloatingLayoutChild{
+						localKey = "lock",
+						h = 0.75,
+						v = 0.5,
+						item = builtin.ImageView{
+							meta = {
+								mouseTransparent = true,
+								styleSheet = styleutil.makeStyle{ size = { lockSize, lockSize } },
+							},
+							path = config.lockIcon,
+						},
+					},
+				}, lockColumnWidth),
+				stripContent,
+			},
+		}
+	end
+
 	local strip = builtin.Component{
 		mouseTransparent = true,
 		meta = {
 			class = "dk-compass-strip",
 			styleSheet = styleutil.makeStyle{
-				size = { stripWidth, stripHeight },
-				backgroundColor1 = config.backgroundColor,
+				size = { totalWidth, stripHeight },
+				backgroundColor1 = backgroundColor,
 			},
 		},
-		layout = builtin.BoxLayout{
-			orientation = builtin.type.Orientation.Vertical,
-			children = stripRows,
-		},
+		layout = stripContent,
 	}
 
 	-- horizontal offset: spacer on the left (dx > 0) or right (dx < 0) of the strip
@@ -501,7 +623,7 @@ end)
 
 -- The celebrations overlay is a full-screen, click-through layer inside the main HUD.
 -- We wrap it in a full-screen FloatingLayout so the on-screen compass can be placed
--- anywhere on screen according to the "screenPosition" mod setting.
+-- anywhere on screen according to the "compassPosition" mod setting.
 local CelebrationsContainerWithCompass = react.RegisterRecipe("CelebrationsContainer", function(param : CelebrationsContainerParams) : TreeNodeId
 	react.setMouseTransparent(true)
 	if config.debug then
@@ -539,7 +661,7 @@ local DkCompassGameBarPlugin = react.RegisterPluginRecipe(game_bar_widgets.GameB
 	end
 
 	local compact = settings:get().compactNames
-	local heading = useHeading(settings:get().northOffsetDeg)
+	local heading, locked = useHeading(settings:get().northOffsetDeg, settings:get().vehicleHeading)
 	local degrees = heading:old()
 	local index = directionIndex(degrees)
 	local name = compact and LABELS[index].text or DIRECTION_NAMES[index]
@@ -559,25 +681,35 @@ local DkCompassGameBarPlugin = react.RegisterPluginRecipe(game_bar_widgets.GameB
 		class = compact and "dk-gamebar-direction-compact" or "dk-gamebar-direction"
 	end
 
-	return builtin.BoxLayout{
-		orientation = builtin.type.Orientation.Horizontal,
-		children = {
-			builtin.Component{
-				meta = {
-					tooltip = "Camera direction",
-					class = class,
-				},
-				layout = builtin.BoxLayout{
-					orientation = builtin.type.Orientation.Horizontal,
-					children = {
-						builtin.TextView{
-							meta = { class = "font-scale-headline" },
-							text = text,
-						},
-					},
+	local isLocked = locked:old()
+	local children : {TreeNodeId} = {}
+	if isLocked then
+		-- locked to a vehicle: a lock in front of the text (outside the fixed-width text box,
+		-- like the icons in front of the Transported numbers)
+		children[#children + 1] = builtin.ImageView{
+			meta = { tooltip = "Direction of the followed vehicle" },
+			path = config.lockIcon,
+		}
+	end
+	children[#children + 1] = builtin.Component{
+		meta = {
+			tooltip = isLocked and "Direction of the followed vehicle" or "Camera direction",
+			class = class,
+		},
+		layout = builtin.BoxLayout{
+			orientation = builtin.type.Orientation.Horizontal,
+			children = {
+				builtin.TextView{
+					meta = { class = "font-scale-headline" },
+					text = text,
 				},
 			},
 		},
+	}
+
+	return builtin.BoxLayout{
+		orientation = builtin.type.Orientation.Horizontal,
+		children = children,
 	}
 end)
 
@@ -626,6 +758,7 @@ local CalloutContainerWithCompass = react.RegisterRecipe("CalloutContainer", fun
 			northOffsetDeg = s.northOffsetDeg,
 			cameraViews = true,
 			vehicleHeading = s.vehicleHeading,
+			isCameraView = true,
 		}
 		children[#children + 1] = builtin.FloatingLayoutChild{
 			localKey = "dk-compass-camera-view",

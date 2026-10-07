@@ -4,7 +4,9 @@ The version number is the `revision` in `mod.json`.
 
 ## Version 5
 
-- New setting "Follow view shows": the camera direction, or the direction the followed vehicle is moving. The compass keeps the travel direction while you orbit, zoom or look around.
+- New setting "When following a vehicle, show": the camera direction, or the direction the followed vehicle is moving. Works in follow view, cockpit view and when a vehicle is pinned from the line or vehicle manager. In follow and cockpit view the direction is measured from the camera's movement, and keeps the travel direction while you orbit, zoom or look around. A lock shows when the compass follows a vehicle.
+- Removed the top right and middle right screen positions: the game opens its windows there and the compass covered their close buttons. Those choices move to Top center, which is the new default.
+- The highlighted direction no longer flickers when the heading is right between two directions.
 - Fixed: opening the mod settings from the in-game pause menu crashed the interface (version 4 was never released with this bug).
 
 ## Version 4 (not released separately, included in version 5)
