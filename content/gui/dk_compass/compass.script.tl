@@ -3,6 +3,7 @@ local react = ug_require "::/gui/main/react.lua" as React
 local styleutil = ug_require "::/gui/main/styleutil.tl" as StyleUtil
 local celebration_react_util = ug_require "::/game_mechanics/celebrations/celebration_react_util.tl" as CelebrationReactUtil
 local game_bar_widgets = ug_require "::/gui/game_bar/game_bar_widgets.tl" as GameBarWidgets
+local callout_container = ug_require "::/gui/main/callout_container.tl" as RecipeWithApi0<CalloutApi>
 
 local MOD_ID = "dk_compass"
 
@@ -59,6 +60,7 @@ local POSITIONS : {{number}} = {
 	{ 1.0, 0.5, 0, 0 },  -- Middle right
 	{ 0.0, 1.0, 0, -90 }, -- Bottom left (above the Account panel of the game bar)
 	{ 1.0, 1.0, 0, -74 }, -- Bottom right (above the right part of the game bar)
+	{ 0.5, 0.0, 0, 56 },  -- Top center (below the notification icons, which fill the top center)
 }
 local POSITION_TOP_LEFT = 0
 local DEFAULT_POSITION = 1 -- Top right
@@ -83,6 +85,7 @@ local record Settings
 	alignWithLayersButton : boolean
 	scale : number
 	northOffsetDeg : number
+	cameraViews : boolean
 end
 
 -- Reads the chosen mod settings. The game stores the 1-based index of the chosen option
@@ -129,6 +132,7 @@ local function loadSettings() : Settings
 	local sizeIndex = option("size", #SCALES) or DEFAULT_SIZE
 	local compactNames = option("gameBarNames", 2) == 1
 	local sunNorth = option("north", 2) == 1
+	local cameraViews = option("cameraViews", 2) == 1
 
 	local okEnv, sunRotation = pcall(function() : number
 		return api.gui.rendering.getEnvironment().atmosphere.sunRotation
@@ -139,6 +143,7 @@ local function loadSettings() : Settings
 		.. ", screenPosition = " .. tostring(positionIndex)
 		.. ", size = " .. tostring(sizeIndex)
 		.. ", sunNorth = " .. tostring(sunNorth)
+		.. ", cameraViews = " .. tostring(cameraViews)
 		.. ", environment sunRotation = " .. (okEnv and tostring(sunRotation) or "n/a")
 		.. (ok and "" or " (could not read mod params, using defaults)"))
 
@@ -154,6 +159,7 @@ local function loadSettings() : Settings
 		alignWithLayersButton = positionIndex == POSITION_TOP_LEFT,
 		scale = SCALES[sizeIndex + 1],
 		northOffsetDeg = sunNorth and config.sunNoonMapHeadingDeg or 0,
+		cameraViews = cameraViews,
 	}
 end
 
@@ -492,8 +498,58 @@ local DkCompassGameBarPlugin = react.RegisterPluginRecipe(game_bar_widgets.GameB
 	}
 end)
 
+-- The game hides its whole normal interface (including the celebrations overlay above) in
+-- follow view and free camera. The callout overlay is a full-screen, click-through layer outside
+-- that interface, so with "Show in free camera and follow view" on, a second compass is added
+-- there. It carries the "dk-camera-view" class, which compass.css.lua only shows in those views
+-- (!action-follow / !action-camera). The original callout container is called inside the
+-- wrapper, so the interface (Api) it provides to the game stays the same.
+local CalloutContainerWithCompass = react.RegisterRecipe("CalloutContainer", function() : TreeNodeId
+	react.setMouseTransparent(true)
+	local settings : ReactRefT<Settings> = react.useRefLazy(loadSettings)
+
+	local children : {TreeNodeId} = {
+		builtin.FloatingLayoutChild{
+			localKey = "callouts",
+			h = -1,
+			v = -1,
+			item = react.CallOriginalRecipe(callout_container),
+		},
+	}
+	local s = settings:get()
+	if s.cameraViews then
+		local cameraSettings : Settings = {
+			gameBar = s.gameBar,
+			compactNames = s.compactNames,
+			-- same style as the screen compass, or letters if the screen compass is off
+			screenCompass = s.screenCompass ~= SCREEN_OFF and s.screenCompass or SCREEN_LETTERS,
+			posH = s.posH,
+			posV = s.posV,
+			offsetX = s.offsetX,
+			offsetY = s.offsetY,
+			alignWithLayersButton = s.alignWithLayersButton,
+			scale = s.scale,
+			northOffsetDeg = s.northOffsetDeg,
+			cameraViews = true,
+		}
+		children[#children + 1] = builtin.FloatingLayoutChild{
+			localKey = "dk-compass-camera-view",
+			h = s.posH,
+			v = s.posV,
+			item = builtin.Component{
+				mouseTransparent = true,
+				meta = { class = "dk-camera-view" },
+				layout = builtin.BoxLayout{ child = DkCompass(cameraSettings) },
+			},
+		}
+	end
+
+	return builtin.FloatingLayout{ children = children }
+end)
+
 local function doReplaceFn(replacementApi : ReactReplacementApi)
 	replacementApi.ReplaceRecipe(celebration_react_util.CelebrationsContainer, CelebrationsContainerWithCompass)
+	replacementApi.ReplaceRecipe(callout_container, CalloutContainerWithCompass as RecipeWithApi0<CalloutApi>)
 end
 
 local result = {

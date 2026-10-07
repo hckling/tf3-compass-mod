@@ -19,9 +19,10 @@ Configure the mod per savegame (Load Game → select save → Mods tab → gear 
 | Game bar | Off, Direction (default), Degrees, Direction and degrees |
 | Game bar direction names | Full (Northwest, default), Compact (NW) |
 | Screen compass | Off (default), Letters, Letters and degrees, Degrees |
-| Screen compass position | Top/middle/bottom × left/right (default top right) |
+| Screen compass position | Top/middle/bottom × left/right, or top center (default top right) |
 | Screen compass size | Small, Medium (default), Large |
 | North | Map (top of the minimap, default), Sun (rises in the east) |
+| Show in free camera and follow view | Off (default), On |
 
 "Sun (rises in the east)" turns the compass so the noon sun is in the north: the game's sun moves like in the
 southern hemisphere (measured in game: noon sun at map heading ~100°, sunrise south of east in November).

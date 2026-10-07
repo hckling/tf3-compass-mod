@@ -2,6 +2,11 @@
 
 The version number is the `revision` in `mod.json`.
 
+## Version 4
+
+- New screen compass position: Top center (below the notification icons).
+- New setting "Show in free camera and follow view": the game hides its normal interface there, so the compass can now be shown in those views too. Off by default.
+
 ## Version 3
 
 - Separate settings for the game bar and the screen compass, and both can be shown at the same time.

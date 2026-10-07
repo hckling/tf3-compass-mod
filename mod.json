@@ -53,9 +53,21 @@
                 "Middle left",
                 "Middle right",
                 "Bottom left",
-                "Bottom right"
+                "Bottom right",
+                "Top center"
             ],
             "defaultIndex": 1
+        },
+        {
+            "key": "cameraViews",
+            "name": "Show in free camera and follow view",
+            "tooltip": "The game hides its normal interface in these views. When on, the compass strip is shown there too, at the chosen screen position.",
+            "uiType": "ComboBox",
+            "values": [
+                "Off",
+                "On"
+            ],
+            "defaultIndex": 0
         },
         {
             "key": "size",
@@ -87,7 +99,7 @@
     "preRunScript": {
         "fileName": ""
     },
-    "revision": 3,
+    "revision": 4,
     "runScript": {
         "fileName": ""
     },

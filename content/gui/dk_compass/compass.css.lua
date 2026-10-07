@@ -16,6 +16,17 @@ function data()
 		gravity = { -1, -1 },
 	})
 
+	-- The compass on the callout overlay is only for the views where the game hides its
+	-- normal interface: follow view (action-follow) and free camera (action-camera).
+	-- (The callout overlay's own rule already makes its FloatingLayouts fill the screen.)
+	a("!dk-camera-view", {
+		visibility = "none",
+	})
+	a([[!action-follow !dk-camera-view,
+		!action-camera !dk-camera-view]], {
+		visibility = "visible",
+	})
+
 	-- Rounded strip background: the same nine-patch the game uses for its callouts.
 	-- It is tinted with backgroundColor1, which the script sets.
 	a("!dk-compass-strip", {
